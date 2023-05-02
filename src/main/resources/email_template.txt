@@ -1,0 +1,11 @@
+Fly Voyage Registration Confirmation
+
+Dear {name},
+
+Here is your Confirmation Token {token}
+
+Thank you for coming on board. We hope to serve you to your maximum satisfaction.
+
+At Fly Voyage, we prioritize your satisfaction and strive to ensure it.
+
+Thank you,
