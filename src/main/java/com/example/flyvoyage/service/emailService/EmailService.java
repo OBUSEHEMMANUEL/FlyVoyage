@@ -1,2 +1,5 @@
-package com.example.flyvoyage.service.emailService;public class EmailService {
+package com.example.flyvoyage.service.emailService;
+
+public interface EmailService {
+     void send(String toEmail, String email);
 }

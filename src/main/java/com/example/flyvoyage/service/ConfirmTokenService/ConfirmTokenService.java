@@ -1,4 +1,4 @@
-package com.example.flyvoyage.service;
+package com.example.flyvoyage.service.ConfirmTokenService;
 
 import com.example.flyvoyage.data.model.ConfirmToken;
 

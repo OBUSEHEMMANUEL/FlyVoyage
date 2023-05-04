@@ -1,2 +1,9 @@
-package com.example.flyvoyage.data.dto.request;public record ConfirmTokenRequest() {
+package com.example.flyvoyage.data.dto.request;
+
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+import javax.validation.constraints.NotNull;
+public record ConfirmTokenRequest(@NotNull String token, @NotNull String emailAddress) {
 }

@@ -1,4 +1,4 @@
-package com.example.flyvoyage.service;
+package com.example.flyvoyage.service.PassengerService;
 
 import com.example.flyvoyage.data.dto.request.ConfirmTokenRequest;
 import com.example.flyvoyage.data.dto.request.LoginRequest;
@@ -8,7 +8,10 @@ import com.example.flyvoyage.data.dto.response.PassengerRegistrationResponse;
 import com.example.flyvoyage.data.model.ConfirmToken;
 import com.example.flyvoyage.data.model.Passenger;
 import com.example.flyvoyage.data.repository.PassengerRepository;
+import com.example.flyvoyage.exception.PassengerException;
+import com.example.flyvoyage.service.ConfirmTokenService.ConfirmTokenService;
 import com.example.flyvoyage.service.emailService.EmailService;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,9 +19,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -30,6 +33,24 @@ public class PassengerServiceImpl implements PassengerService {
     ConfirmTokenService confirmTokenService;
     @Autowired
     EmailService emailService;
+
+    @Override
+    public Passenger save(Passenger passenger){
+     return    passengerRepo.save(passenger);
+    }
+
+    @Override
+    public Optional<Passenger> findById(long id) {
+       return passengerRepo.findById(id);
+    }
+
+    @Transactional
+    @Override
+    public Passenger getEmailAddress(String emailAddress){
+     Passenger passenger =   passengerRepo.findByEmailAddressIgnoreCase(emailAddress)
+             .orElseThrow(()->new RuntimeException("Email not found"));
+     return passenger;
+    }
 
 
     @Override
@@ -47,6 +68,7 @@ public class PassengerServiceImpl implements PassengerService {
         passengerRepo.save(passenger);
         String token = generateToken(passenger);
 
+
         PassengerRegistrationResponse response = new PassengerRegistrationResponse();
         response.setMessage("Created Successfully");
         response.setStatusCode(HttpStatus.CREATED);
@@ -54,6 +76,27 @@ public class PassengerServiceImpl implements PassengerService {
         emailService.send(request.emailAddress(),buildEmail(request.lastName(),token));
         return response;
     }
+
+
+
+    private String generateToken(Passenger passenger) {
+        StringBuilder tok = new StringBuilder();
+        SecureRandom number = new SecureRandom();
+        for (int i = 0; i < 4; i++) {
+            int num = number.nextInt(9);
+            tok.append(num);
+        }
+        StringBuilder token = new StringBuilder(tok.toString());
+        ConfirmToken confirmToken = new ConfirmToken();
+        confirmToken.setToken(String.valueOf(token));
+        confirmToken.setCreatedAt(LocalDateTime.now());
+        confirmToken.setExpiredAt(LocalDateTime.now().plusMinutes(10));
+        confirmToken.setPassenger(passenger);
+        confirmTokenService.saveConfirmationToken(confirmToken);
+
+        return token.toString();
+    }
+
     private String bcrypt(String password){
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         return encoder.encode(password);
@@ -61,45 +104,35 @@ public class PassengerServiceImpl implements PassengerService {
     }
 
     @Override
-    public String generateToken(Passenger passenger) {
-        StringBuilder tok= new StringBuilder();
-        SecureRandom random = new SecureRandom();
-        for (int i = 0; i < 4; i++) {
-            int num = random.nextInt(9);
-            tok.append(num);
-        }
-        StringBuilder token = new StringBuilder(tok.toString());
-
-        ConfirmToken confirmToken = new ConfirmToken();
-        confirmToken.setToken(String.valueOf(token));
-        confirmToken.setPassenger(passenger);
-        confirmToken.setCreatedAt(LocalDateTime.now());
-        confirmToken.setExpiredAt(LocalDateTime.now().plusMinutes(10));
-        confirmTokenService.saveConfirmationToken(confirmToken);
-        return token.toString();
-    }
-
-    @Override
     public String confirmToken(ConfirmTokenRequest confirmToken){
         var token = confirmTokenService.getConfirmationToken(confirmToken.token())
-                .orElseThrow(()-> new IllegalStateException("Token does not exist"));
+                .orElseThrow(()-> new PassengerException("Token does not exist"));
 
         if (token.getExpiredAt().isBefore(LocalDateTime.now())){
-            throw new IllegalStateException("Token has expired");
+            throw new PassengerException("Token has expired");
         }
         confirmTokenService.setConfirmed(token.getToken());
+        enableUser(confirmToken.emailAddress());
 
         return "confirmed";
+    }
+
+    private void enableUser(String emailAddress) {
+    passengerRepo.enable(emailAddress);
     }
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
         try {
             var foundUser = passengerRepo.findByEmailAddressIgnoreCase(loginRequest.emailAddress())
-                    .orElseThrow(() -> new RuntimeException("email not found"));
+                    .orElseThrow(() -> new PassengerException("email not found"));
 
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
             var matches = encoder.matches(loginRequest.password(), foundUser.getPassword());
+    if(foundUser.getIsDisabled()){
+    throw new PassengerException("Account not Active");
+}
             LoginResponse loginResponse = new LoginResponse();
+
             if (matches) {
                 loginResponse.setStatusCode(HttpStatus.OK);
 
@@ -138,7 +171,6 @@ public class PassengerServiceImpl implements PassengerService {
         } catch (IOException e) {
             log.info(e.getMessage());
         }
-        System.out.println(content);
         return content.toString();
     }
 
