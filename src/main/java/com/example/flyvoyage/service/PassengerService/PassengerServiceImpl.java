@@ -145,6 +145,7 @@ public class PassengerServiceImpl implements PassengerService {
             }
             return loginResponse;
         }catch (RuntimeException e){
+            log.error("Error occurred during login", e);
             LoginResponse loginResponse = new LoginResponse();
             loginResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
             loginResponse.setLoggedIn("INACTIVE");

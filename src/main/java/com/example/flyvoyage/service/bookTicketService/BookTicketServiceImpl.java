@@ -1,7 +1,6 @@
 package com.example.flyvoyage.service.bookTicketService;
 
 import com.example.flyvoyage.data.dto.request.BookingRequest;
-import com.example.flyvoyage.data.dto.request.CancelFightRequest;
 import com.example.flyvoyage.data.dto.response.BookingResponse;
 import com.example.flyvoyage.data.model.BookTicket;
 import com.example.flyvoyage.data.model.Passenger;
@@ -15,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 
@@ -86,6 +86,16 @@ public class BookTicketServiceImpl implements BookTicketService{
                 "\nBooked Seat Number: " + bookingRequest.seatNumBooked() +
                 "\n\nPlease keep this email as your booking confirmation." +
                 "\n\nThank you,\nThe Flight Booking Team";
+    }
+    public BookingResponse getAllBookingEntries(){
+      var list =  bookTicketRepository.findAll();
+        BookingResponse response = new BookingResponse();
+        response.setStatus(HttpStatus.OK);
+        return response;
+    }
+    public List<BookTicket> getPassengerBookingEntries(String emailAddress){
+     var passenger =   passengerService.getEmailAddress(emailAddress);
+    return passenger.getBookTickets();
     }
 
 }
